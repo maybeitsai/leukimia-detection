@@ -1,10 +1,10 @@
 """
 Model architectures for blood cell classification.
-This module contains MobileNetV3Small baseline and CBAM-enhanced versions.
+This module contains MobileNetV2 baseline and CBAM-enhanced versions.
 """
 
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV3Small
+from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.layers import (
     GlobalAveragePooling2D, BatchNormalization, Dense, Dropout,
     Conv2D, Multiply, Add, Activation, Reshape, GlobalMaxPooling2D,
@@ -128,9 +128,9 @@ class CBAM:
         return cbam_feature
 
 
-def create_mobilenetv3_baseline(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
+def create_mobilenetv2_baseline(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
     """
-    Create MobileNetV3Small baseline model
+    Create MobileNetV2 baseline model
 
     Args:
         input_shape: Input image shape
@@ -140,8 +140,8 @@ def create_mobilenetv3_baseline(input_shape=(224, 224, 3), num_classes=4, dropou
     Returns:
         Compiled Keras model
     """
-    # Load pre-trained MobileNetV3Small
-    base_model = MobileNetV3Small(
+    # Load pre-trained MobileNetV2
+    base_model = MobileNetV2(
         include_top=False,
         weights='imagenet',
         input_shape=input_shape
@@ -164,9 +164,9 @@ def create_mobilenetv3_baseline(input_shape=(224, 224, 3), num_classes=4, dropou
     return model
 
 
-def create_mobilenetv3_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
+def create_mobilenetv2_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
     """
-    Create MobileNetV3Small with CBAM attention modules
+    Create MobileNetV2 with CBAM attention modules
 
     Args:
         input_shape: Input image shape
@@ -176,8 +176,8 @@ def create_mobilenetv3_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_ra
     Returns:
         Compiled Keras model
     """
-    # Load pre-trained MobileNetV3Small without top
-    base_model = MobileNetV3Small(
+    # Load pre-trained MobileNetV2 without top
+    base_model = MobileNetV2(
         include_top=False,
         weights='imagenet',
         input_shape=input_shape
@@ -241,9 +241,9 @@ def create_mobilenetv3_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_ra
     return model
 
 
-def create_simple_mobilenetv3_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
+def create_simple_mobilenetv2_cbam(input_shape=(224, 224, 3), num_classes=4, dropout_rate=0.3):
     """
-    Create a simpler MobileNetV3Small with CBAM - adds CBAM only at the end
+    Create a simpler MobileNetV2 with CBAM - adds CBAM only at the end
 
     Args:
         input_shape: Input image shape
@@ -253,8 +253,8 @@ def create_simple_mobilenetv3_cbam(input_shape=(224, 224, 3), num_classes=4, dro
     Returns:
         Compiled Keras model
     """
-    # Load pre-trained MobileNetV3Small
-    base_model = MobileNetV3Small(
+    # Load pre-trained MobileNetV2
+    base_model = MobileNetV2(
         include_top=False,
         weights='imagenet',
         input_shape=input_shape
@@ -296,7 +296,7 @@ def compile_model(model, initial_learning_rate=0.0001, decay_steps=40, decay_rat
     
     model.compile(
         loss='categorical_crossentropy',
-        optimizer=Adam(learning_rate=initial_learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08),
+        optimizer=Adam(learning_rate=initial_learning_rate),
         metrics=['accuracy']
     )
     

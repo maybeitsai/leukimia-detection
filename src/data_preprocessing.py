@@ -132,16 +132,123 @@ def process_and_save_test_data(test_list, output_dir="temp_data/prepared_test"):
     print(f"Test data processing completed! Processed {len(test_list)} images.")
 
 
-def process_and_save_train_data(train_list, output_dir="temp_data/prepared_data"):
+def process_and_save_train_data(train_list, output_dir="temp_data/prepared_data", 
+                               enable_preprocessing=True, apply_clahe=False):
     """
-    Process and save training data with segmentation augmentation.
+    Process and save training data with NORMAL image preprocessing (NO SEGMENTATION).
+    Each original sample is resized and optionally enhanced, then saved as is.
+    
+    Args:
+        train_list: List of training image paths
+        output_dir: Directory to save processed training images
+        enable_preprocessing: Whether to apply basic image enhancements
+        apply_clahe: Whether to apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    """
+    print("=" * 60)
+    print("🔄 NORMAL IMAGE PREPROCESSING MODE (NO SEGMENTATION)")
+    print("=" * 60)
+    print(f"Processing {len(train_list)} training images...")
+    if enable_preprocessing:
+        print("✅ Basic image enhancements: ENABLED")
+    if apply_clahe:
+        print("✅ CLAHE enhancement: ENABLED")
+    print("❌ K-means segmentation: DISABLED")
+    print("-" * 60)
+    
+    tic = time.perf_counter()
+    
+    # Create CLAHE object if needed
+    if apply_clahe:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    
+    for p, img_path in enumerate(train_list):
+        img = cv2.imread(img_path)
+        img = cv2.resize(img, (224, 224))
+        
+        # Apply optional preprocessing
+        if enable_preprocessing:
+            # Convert to RGB for processing
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            
+            # Apply CLAHE if enabled
+            if apply_clahe:
+                # Apply CLAHE to each channel
+                img_lab = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)
+                img_lab[:,:,0] = clahe.apply(img_lab[:,:,0])
+                img_rgb = cv2.cvtColor(img_lab, cv2.COLOR_LAB2RGB)
+            
+            # Optional: Add slight denoising
+            img_rgb = cv2.bilateralFilter(img_rgb, 9, 75, 75)
+            
+            # Convert back to BGR for saving
+            img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+        
+        # Extract label from path
+        label = os.path.basename(os.path.dirname(img_path))
+        
+        # Save processed image
+        if label == "Benign":
+            save_path = os.path.join(output_dir, "benign", f"{label}_{p:05d}.png")
+        elif label == "[Malignant] Pre-B":
+            save_path = os.path.join(output_dir, "PreB", f"PreB_{p:05d}.png")
+        elif label == "[Malignant] Pro-B":
+            save_path = os.path.join(output_dir, "ProB", f"ProB_{p:05d}.png")
+        elif label == "[Malignant] early Pre-B":
+            save_path = os.path.join(output_dir, "EarlyPreB", f"EarlyPreB_{p:05d}.png")
+        
+        cv2.imwrite(save_path, img)
+        
+        # Progress indicator
+        if (p + 1) % 100 == 0:
+            print(f"Processed {p + 1}/{len(train_list)} images...")
+    
+    toc = time.perf_counter()
+    print("=" * 60)
+    print("✅ NORMAL PREPROCESSING COMPLETED!")
+    print(f"⏱️  Time taken: {((toc - tic)/60):.2f} minutes")
+    print(f"📊 Processed: {len(train_list)} original images (1:1 ratio)")
+    print(f"💾 Saved to: {output_dir}")
+    print("=" * 60)
+
+
+def choose_preprocessing_method(train_list, output_dir="temp_data/prepared_data", 
+                              use_segmentation=False, enable_enhancements=True, apply_clahe=False):
+    """
+    Choose between normal preprocessing or segmentation-based preprocessing.
+    
+    RECOMMENDED: Use normal preprocessing (use_segmentation=False) for better performance.
+    
+    Args:
+        train_list: List of training image paths
+        output_dir: Directory to save processed training images
+        use_segmentation: If True, applies K-means segmentation (more complex, slower)
+                         If False, uses normal image processing (recommended)
+        enable_enhancements: Whether to apply basic image enhancements (normal mode only)
+        apply_clahe: Whether to apply CLAHE enhancement (normal mode only)
+    """
+    if use_segmentation:
+        print("⚠️ WARNING: Segmentation mode selected - this is complex and slow!")
+        print("📝 RECOMMENDATION: Use normal preprocessing instead (use_segmentation=False)")
+        # Use the legacy segmentation function (if it exists in the codebase)
+        process_and_save_train_data_with_segmentation(train_list, output_dir)
+    else:
+        print("✅ RECOMMENDED: Using normal image preprocessing")
+        process_and_save_train_data(train_list, output_dir, enable_enhancements, apply_clahe)
+
+
+def process_and_save_train_data_with_segmentation(train_list, output_dir="temp_data/prepared_data"):
+    """
+    LEGACY FUNCTION: Process and save training data with segmentation augmentation.
     Each original sample creates two samples: original and segmented.
+    
+    NOTE: This function is kept for backward compatibility but is not recommended.
+    Use process_and_save_train_data() for normal preprocessing instead.
     
     Args:
         train_list: List of training image paths
         output_dir: Directory to save processed training images
     """
-    print("Processing training data with segmentation...")
+    print("Processing training data with segmentation... (LEGACY MODE)")
     tic = time.perf_counter()
     
     p = 0
@@ -294,3 +401,85 @@ def create_data_generators(train_df, valid_df, test_df, batch_size=32, img_size=
     )
     
     return train_gen, valid_gen, test_gen
+
+
+# =============================================================================
+# USAGE EXAMPLES
+# =============================================================================
+
+def example_normal_preprocessing():
+    """
+    Example of how to use NORMAL preprocessing (RECOMMENDED).
+    This is the standard approach without segmentation complexity.
+    """
+    print("\n" + "="*60)
+    print("📚 USAGE EXAMPLE: NORMAL PREPROCESSING (RECOMMENDED)")
+    print("="*60)
+    print("""
+# For normal image preprocessing (RECOMMENDED):
+from src.data_preprocessing import choose_preprocessing_method, prepare_directories
+
+# Setup directories
+prepare_directories()
+
+# Get your training image paths
+train_list = get_train_list()  # Your function to get image paths
+
+# Method 1: Simple normal preprocessing
+process_and_save_train_data(train_list)
+
+# Method 2: Normal preprocessing with enhancements
+process_and_save_train_data(
+    train_list, 
+    enable_preprocessing=True,  # Apply basic enhancements
+    apply_clahe=True           # Apply contrast enhancement
+)
+
+# Method 3: Using the wrapper function (EASIEST)
+choose_preprocessing_method(
+    train_list,
+    use_segmentation=False,    # Normal preprocessing (RECOMMENDED)
+    enable_enhancements=True,  # Apply image enhancements
+    apply_clahe=True          # Apply contrast enhancement
+)
+    """)
+    print("="*60)
+
+
+def example_segmentation_preprocessing():
+    """
+    Example of segmentation preprocessing (NOT RECOMMENDED for beginners).
+    """
+    print("\n" + "="*60)
+    print("⚠️  USAGE EXAMPLE: SEGMENTATION PREPROCESSING (ADVANCED)")
+    print("="*60)
+    print("""
+# For segmentation-based preprocessing (ADVANCED - NOT RECOMMENDED):
+from src.data_preprocessing import choose_preprocessing_method
+
+# Setup directories
+prepare_directories()
+
+# Get your training image paths
+train_list = get_train_list()  # Your function to get image paths
+
+# Segmentation preprocessing (COMPLEX, SLOW)
+choose_preprocessing_method(
+    train_list,
+    use_segmentation=True     # WARNING: Complex and time-consuming
+)
+
+# ⚠️ NOTE: Segmentation is much slower and more complex
+# ⚠️ RECOMMENDATION: Use normal preprocessing instead
+    """)
+    print("="*60)
+
+
+if __name__ == "__main__":
+    print("🩸 Blood Cell Classification - Data Preprocessing Module")
+    print("Choose your preprocessing method:")
+    print("1. Normal preprocessing (RECOMMENDED)")
+    print("2. Segmentation preprocessing (ADVANCED)")
+    
+    example_normal_preprocessing()
+    example_segmentation_preprocessing()
